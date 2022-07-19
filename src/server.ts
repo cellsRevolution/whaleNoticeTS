@@ -44,7 +44,7 @@ const getAlert = (startTime: number) => {
       .get(
         `https://api.whale-alert.io/v1/transactions?api_key=OO5TFgDg7j9vo0mAbRG95CgDUHSAP6JV&min_value=500000&start=${startTime}&end=${endTime}`
       )
-      .then((req: Request, res: Response): void => {
+      .then((res: Response, req: Request): void => {
         collections.transaction?.insertOne(req.body);
         getAlert(endTime);
       });

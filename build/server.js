@@ -67,7 +67,7 @@ const getAlert = (startTime) => {
         let endTime = Math.floor(Date.now() / 1000);
         superagent_1.default
             .get(`https://api.whale-alert.io/v1/transactions?api_key=OO5TFgDg7j9vo0mAbRG95CgDUHSAP6JV&min_value=500000&start=${startTime}&end=${endTime}`)
-            .then((req, res) => {
+            .then((res, req) => {
             var _a;
             (_a = collections.transaction) === null || _a === void 0 ? void 0 : _a.insertOne(req.body);
             getAlert(endTime);
