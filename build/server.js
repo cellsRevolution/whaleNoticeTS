@@ -63,19 +63,18 @@ function connectToDatabase() {
 }
 const superagent_1 = __importDefault(require("superagent"));
 const getAlert = (startTime) => {
-    setTimeout(() => {
+    setTimeout(() => __awaiter(void 0, void 0, void 0, function* () {
+        var _a;
         let endTime = Math.floor(Date.now() / 1000);
-        superagent_1.default
-            .get(`https://api.whale-alert.io/v1/transactions?api_key=OO5TFgDg7j9vo0mAbRG95CgDUHSAP6JV&min_value=500000&start=${startTime}&end=${endTime}`)
-            .then((res, req) => {
-            var _a;
-            (_a = collections.transaction) === null || _a === void 0 ? void 0 : _a.insertOne(req.body);
+        let response = yield superagent_1.default.get(`https://api.whale-alert.io/v1/transactions?api_key=OO5TFgDg7j9vo0mAbRG95CgDUHSAP6JV&min_value=500000&start=${startTime}&end=${endTime}`);
+        if (response !== undefined) {
+            (_a = collections.transaction) === null || _a === void 0 ? void 0 : _a.insertOne(response.body);
             getAlert(endTime);
-        });
-    }, 60000);
+        }
+    }), 60000);
 };
 getAlert(Math.floor(Date.now() / 1000));
-const transController = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const transController = (_req, res) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
     try {
         const games = (yield ((_a = collections.transaction) === null || _a === void 0 ? void 0 : _a.find({}).toArray()));
@@ -87,7 +86,7 @@ const transController = (req, res) => __awaiter(void 0, void 0, void 0, function
 });
 const app = (0, express_1.default)();
 app.use(express_1.default.json());
-app.get('/transactions', (req, res, next) => {
+app.get('/transactions', (_req, res, next) => {
     res.set('Access-Control-Allow-Origin', '*');
     next();
 });

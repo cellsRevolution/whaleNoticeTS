@@ -38,21 +38,20 @@ async function connectToDatabase() {
 import superagent from 'superagent';
 
 const getAlert = (startTime: number) => {
-  setTimeout(() => {
+  setTimeout(async () => {
     let endTime: number = Math.floor(Date.now() / 1000);
-    superagent
-      .get(
-        `https://api.whale-alert.io/v1/transactions?api_key=OO5TFgDg7j9vo0mAbRG95CgDUHSAP6JV&min_value=500000&start=${startTime}&end=${endTime}`
-      )
-      .then((res: Response, req: Request): void => {
-        collections.transaction?.insertOne(req.body);
-        getAlert(endTime);
-      });
+    let response = await superagent.get(
+      `https://api.whale-alert.io/v1/transactions?api_key=OO5TFgDg7j9vo0mAbRG95CgDUHSAP6JV&min_value=500000&start=${startTime}&end=${endTime}`
+    );
+    if (response !== undefined) {
+      collections.transaction?.insertOne(response.body);
+      getAlert(endTime);
+    }
   }, 60000);
 };
 getAlert(Math.floor(Date.now() / 1000));
 
-const transController = async (req: Request, res: Response): Promise<void> => {
+const transController = async (_req: Request, res: Response): Promise<void> => {
   try {
     const games = (await collections.transaction
       ?.find({})
@@ -70,7 +69,7 @@ app.use(express.json());
 
 app.get(
   '/transactions',
-  (req: Request, res: Response, next: NextFunction): void => {
+  (_req: Request, res: Response, next: NextFunction): void => {
     res.set('Access-Control-Allow-Origin', '*');
     next();
   }
