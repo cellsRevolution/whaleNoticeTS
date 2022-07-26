@@ -6,9 +6,10 @@ import * as dotenv from 'dotenv';
 
 class Transaction {
   constructor(
+    public count: string,
     public status: string,
-    public transAction: { [key: string]: string }[],
-    public id?: ObjectId
+    public transactions: { [key: string]: string }[],
+    public id: string
   ) {}
 }
 const collections: { transaction?: mongoDB.Collection } = {};
@@ -51,13 +52,47 @@ const getAlert = (startTime: number) => {
 };
 getAlert(Math.floor(Date.now() / 1000));
 
-const transController = async (_req: Request, res: Response): Promise<void> => {
-  try {
-    const games = (await collections.transaction
-      ?.find({})
-      .toArray()) as unknown as Transaction[];
+function prefixObj(obj: object, prefix: string): object {
+  return Object.fromEntries(
+    Object.entries(obj).map(([key, value]: [string, string]) => {
+      return [
+        `${prefix}${key}`,
+        typeof value === 'object' ? prefixObj(value, prefix) : value,
+      ];
+    })
+  );
+}
 
-    res.status(200).send(games);
+const transController = async (req: Request, res: Response): Promise<void> => {
+  try {
+    let pageNumber: number;
+    pageNumber = parseInt(req.query.page as string);
+    delete req.query.page;
+
+    const query = prefixObj(req.query, 'transactions.');
+
+    if (collections.transaction) {
+      const transactionRecord = (await collections.transaction
+        .aggregate([
+          {
+            $unwind: '$transactions',
+          },
+          {
+            $match: query,
+          },
+        ])
+        .toArray()) as unknown as Transaction[];
+      const data = transactionRecord.slice(
+        20 * (pageNumber - 1),
+        20 * pageNumber
+      );
+      data.forEach((_item, index) => {
+        data[index].id = '' + index;
+      });
+      res.status(200).send(data);
+    } else {
+      throw new Error();
+    }
   } catch (error: any) {
     res.status(500).send(error.message);
   }
@@ -67,16 +102,13 @@ const app = express();
 
 app.use(express.json());
 
-app.get(
-  '/transactions',
-  (_req: Request, res: Response, next: NextFunction): void => {
-    res.set('Access-Control-Allow-Origin', '*');
-    next();
-  }
-);
+app.use('/', (req: Request, res: Response, next: NextFunction): void => {
+  res.set('Access-Control-Allow-Origin', '*');
+  next();
+});
 
 connectToDatabase().then(() => {
-  app.route('/transactions').get(transController);
+  app.route('/').get(transController);
 
   app.listen(5000, () => {
     console.log(`Server started at http://localhost:5000`);

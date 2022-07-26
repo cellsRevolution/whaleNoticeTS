@@ -39,9 +39,10 @@ const express_1 = __importDefault(require("express"));
 const mongoDB = __importStar(require("mongodb"));
 const dotenv = __importStar(require("dotenv"));
 class Transaction {
-    constructor(status, transAction, id) {
+    constructor(count, status, transactions, id) {
+        this.count = count;
         this.status = status;
-        this.transAction = transAction;
+        this.transactions = transactions;
         this.id = id;
     }
 }
@@ -74,11 +75,40 @@ const getAlert = (startTime) => {
     }), 60000);
 };
 getAlert(Math.floor(Date.now() / 1000));
-const transController = (_req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a;
+function prefixObj(obj, prefix) {
+    return Object.fromEntries(Object.entries(obj).map(([key, value]) => {
+        return [
+            `${prefix}${key}`,
+            typeof value === 'object' ? prefixObj(value, prefix) : value,
+        ];
+    }));
+}
+const transController = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const games = (yield ((_a = collections.transaction) === null || _a === void 0 ? void 0 : _a.find({}).toArray()));
-        res.status(200).send(games);
+        let pageNumber;
+        pageNumber = parseInt(req.query.page);
+        delete req.query.page;
+        const query = prefixObj(req.query, 'transactions.');
+        if (collections.transaction) {
+            const transactionRecord = (yield collections.transaction
+                .aggregate([
+                {
+                    $unwind: '$transactions',
+                },
+                {
+                    $match: query,
+                },
+            ])
+                .toArray());
+            const data = transactionRecord.slice(20 * (pageNumber - 1), 20 * pageNumber);
+            data.forEach((_item, index) => {
+                data[index].id = '' + index;
+            });
+            res.status(200).send(data);
+        }
+        else {
+            throw new Error();
+        }
     }
     catch (error) {
         res.status(500).send(error.message);
@@ -86,12 +116,12 @@ const transController = (_req, res) => __awaiter(void 0, void 0, void 0, functio
 });
 const app = (0, express_1.default)();
 app.use(express_1.default.json());
-app.get('/transactions', (_req, res, next) => {
+app.use('/', (req, res, next) => {
     res.set('Access-Control-Allow-Origin', '*');
     next();
 });
 connectToDatabase().then(() => {
-    app.route('/transactions').get(transController);
+    app.route('/').get(transController);
     app.listen(5000, () => {
         console.log(`Server started at http://localhost:5000`);
     });
